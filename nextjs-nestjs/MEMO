@@ -1,0 +1,9 @@
+
+cd backend
+
+npm run start:dev
+
+
+pnpm create next-app@latest frontend --yes
+cd frontend
+npm run dev dev

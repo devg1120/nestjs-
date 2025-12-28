@@ -1,0 +1,19 @@
+ReactとNest.jsのフルスタックプロジェクトを作成する方法
+https://qiita.com/SKY-HaYaTo/items/bdde73e86e9e6f512d49
+
+
+cd backend
+
+npm run start:dev
+
+cd ../frontendt
+npm start
+
+
+
+
+client                  frontend          backend
+                        react             nextjs
+app -------------------> 3000
+app -------------------------------------> 3001
+

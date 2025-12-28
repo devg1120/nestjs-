@@ -1,0 +1,33 @@
+
+Create GraphQL API with NestJS, Prisma, and PostgreSQL
+
+medium.com/@tekrajpant224/develop-graphql-api-server-with-nestjs-prisma-and-postgresql-37d26e85fc27
+
+
+npm i @nestjs/graphql @nestjs/apollo
+
+
+vi prisma/schema.prisma 
+generator nestgraphql {
+  provider = "node node_modules/prisma-nestjs-graphql"
+  output   = "../src/shared/prismagraphql"
+  reExport = Directories
+}
+
+npx prisma migrate dev --name init
+yarn add prisma-nestjs-graphql
+yarn add graphql-type-json prisma-graphql-type-decimal
+
+
+
+npx prisma generate
+✔ Generated Prisma Client (7.2.0) to ./src/generated/prisma in 41ms
+
+✔ Generated Prisma NestJS/GraphQL to ./src/shared/prismagraphql in 5.18s
+
+#######################################################################
+【入門】NestJS+Prisma+prisma-nestjs-graphqlで快適なGraphQL環境構築🧑🏽‍💻
+
+
+https://zenn.dev/mano_r/articles/8d25be4b4452dd
+

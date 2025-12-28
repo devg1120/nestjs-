@@ -1,0 +1,21 @@
+
+https://zenn.dev/forge_tech_info/articles/4a923dca5db721
+
+github.com/sakurakotubaki/NestPrisma
+
+
+cd db
+docker compose up -d
+
+psql -h 127.0.0.1  -U postgres
+
+\c mydb
+
+mydb=# SELECT * FROM "User";
+
+
+cd curl
+  sh ./user.sh
+
+
+

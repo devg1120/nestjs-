@@ -1,0 +1,7 @@
+
+
+psql -h 127.0.0.1  -U postgres
+
+docker container exec --user postgres -it pgsql_db bash
+
+

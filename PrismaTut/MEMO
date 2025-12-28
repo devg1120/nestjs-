@@ -1,0 +1,256 @@
+
+
+https://zenn.dev/thirosue/books/49a4ee418743ed/viewer/89c2d4
+
+
+$ yarn init -y
+
+
+$ yarn add --dev prisma @prisma/adapter-pg @prisma/client typescript ts-node @types/node
+
+
+$ cat <<EOF > tsconfig.json
+{
+  "compilerOptions": {
+    "sourceMap": true,
+    "outDir": "dist",
+    "strict": true,
+    "lib": ["esnext"],
+    "esModuleInterop": true
+  }
+}
+EOF
+
+$ npx prisma init
+
+.env
+---
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/mydb?schema=public"
+---
+
+
+
+$ cat <<EOF > docker-compose.yml
+version: "3.7"
+services:
+  db:
+    container_name: postgres
+    image: postgres:13
+    ports:
+      - "5432:5432"
+    # Make postgres logs. More information about logging, see official documentation: https://www.postgresql.org/docs/11/runtime-config-logging.html
+    command: postgres -c log_destination=stderr -c log_statement=all -c log_connections=on -c log_disconnections=on
+    environment:
+      - POSTGRES_PASSWORD=postgres
+    logging:
+      options:
+        max-size: "10k"
+        max-file: "5"
+EOF
+
+
+$ docker compose up -d
+
+
+$ docker ps
+  CONTAINER ID   IMAGE         COMMAND                  CREATED          STATUS         PORTS                                         NAMES
+  79eb71ca9c36   postgres:13   "docker-entrypoint.s…"   11 seconds ago   Up 8 seconds   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp   postgres
+
+$ docker logs -f postgres
+
+
+psql -h 127.0.0.1  -U postgres
+
+docker container exec --user postgres -it postgres  bash
+
+
+
+スキーマ設定
+
+prisma/schema.prisma
+----
+model User {
+  id      Int      @default(autoincrement()) @id
+  email   String   @unique
+  name    String?
+}
+----
+
+テーブル生成
+$ npx prisma migrate dev --name init
+
+   Loaded Prisma config from prisma.config.ts.
+   
+   Prisma schema loaded from prisma/schema.prisma.
+   Datasource "db": PostgreSQL database "mydb", schema "postgres" at "localhost:5432"
+   
+   PostgreSQL database mydb created at localhost:5432
+   
+   Applying migration `20251224010136_init`
+   
+   The following migration(s) have been created and applied from new schema changes:
+   
+   prisma/migrations/
+     └─ 20251224010136_init/
+       └─ migration.sql
+   
+   Your database is now in sync with your schema.
+
+
+カラム追加
+----
+model User {
+  id      Int      @default(autoincrement()) @id
+  email   String   @unique
+  name    String?
+  tel    String?
+}
+----
+
+$ npx prisma migrate dev --name add_tel_to_user
+
+テーブル追加
+
+----
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+  name  String
+  tel   String? @db.VarChar(11)
+  posts   Post[] <---- ☆☆☆ 修正
+}
+
+// 追加
+model Post {
+  id        Int     @id @default(autoincrement())
+  title     String
+  content   String?
+  published Boolean @default(false)
+  author    User?   @relation(fields: [authorId], references: [id])
+  authorId  Int?
+}
+----
+
+$ npx prisma migrate dev --name add_post
+
+
+データベース確認
+===============================================================================
+$ psql -h 127.0.0.1  -U postgres
+
+postgres=# \l
+  mydb
+
+postgres=# \c mydb
+
+mydb=# \d
+ postgres | Post               | table    | postgres
+ postgres | Post_id_seq        | sequence | postgres
+ postgres | User               | table    | postgres
+ postgres | User_id_seq        | sequence | postgres
+ postgres | _prisma_migrations | table    | postgres
+
+
+mydb=# \d User
+Did not find any relation named "User".
+mydb=# \d "User"
+ id     | integer |           | not null | nextval('"User_id_seq"'::regclass)
+ email  | text    |           | not null | 
+ name   | text    |           |          | 
+ tel    | text    |           |          | 
+
+mydb=# \d "Post"
+ id        | integer |           | not null | nextval('"Post_id_seq"'::regclass)
+ title     | text    |           | not null | 
+ content   | text    |           |          | 
+ published | boolean |           | not null | false
+ authorId  | integer |           |          | 
+
+
+===============================================================================
+$ npx prisma generate
+
+lib/prisma.ts 
+----
+import "dotenv/config";
+import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from '../generated/prisma/client'
+
+const connectionString = `${process.env.DATABASE_URL}`
+//const connectionString = "postgresql://postgres:postgres@localhost:5432/mydb?schema=public"
+
+const adapter = new PrismaPg({ connectionString })
+const prisma = new PrismaClient({ adapter })
+
+export { prisma }
+----
+
+
+script.ts
+----
+mport { prisma } from './lib/prisma'
+
+async function main() {
+  // Create a new user with a post
+  const user = await prisma.userNew.create({
+    data: {
+      name: 'Alice',
+      email: 'alice@prisma.io',
+      posts: {
+        create: {
+          title: 'Hello World',
+          content: 'This is my first post!',
+          published: true,
+        },
+      },
+    },
+    include: {
+      posts: true,
+    },
+  })
+  console.log('Created user:', user)
+
+  // Fetch all users with their posts
+  const allUsers = await prisma.userNew.findMany({
+    include: {
+      posts: true,
+    },
+  })
+  console.log('All users:', JSON.stringify(allUsers, null, 2))
+}
+
+main()
+  .then(async () => {
+    await prisma.$disconnect()
+  })
+  .catch(async (e) => {
+    console.error(e)
+    await prisma.$disconnect()
+    process.exit(1)
+  })
+----
+
+初期データ投入
+
+$ npx tsx script.ts
+
+
+mydb=# \dt
+ public | PostNew            | table | postgres
+ public | UserNew            | table | postgres
+ public | _prisma_migrations | table | postgres
+
+mydb=# SELECT * FROM "User";
+ERROR:  relation "User" does not exist
+LINE 1: SELECT * FROM "User";
+                      ^
+mydb=# SELECT * FROM "UserNew";
+  1 | alice@prisma.io | Alice
+
+mydb=# SELECT * FROM "PostNew";
+  1 | Hello World | This is my first post! | t         |        1
+
+
+
+
+

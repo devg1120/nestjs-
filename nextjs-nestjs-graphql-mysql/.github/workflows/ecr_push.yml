@@ -1,0 +1,90 @@
+name: Build and Push to ECR
+
+on:
+  push:
+    branches:
+      - master
+#    tags:
+#      - v*
+
+jobs:
+  ecr-backend:
+    name: ECR Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: "ap-northeast-1"
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR Public
+        id: build-and-push-tag
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: nextjs-nestjs-graphql-backend
+        run: |
+          cd backend
+          IMAGE_TAG=latest
+          # IMAGE_TAG=$(echo ${{ github.ref }} | sed -e "s#refs/tags/##g")
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo ::set-output name=version::$IMAGE_TAG
+
+  ecr-frontend:
+    name: ECR Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: "ap-northeast-1"
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR Public
+        id: build-and-push-tag
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: nextjs-nestjs-graphql-frontend
+        run: |
+          cd frontend
+          IMAGE_TAG=latest
+          # IMAGE_TAG=$(echo ${{ github.ref }} | sed -e "s#refs/tags/##g")
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo ::set-output name=version::$IMAGE_TAG
+
+#  slack:
+#      - name: Slack Notification
+#        if: success()
+#        run: |
+#          jq -n --arg titleLink '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}' '{
+#            attachments: [{
+#              pretext: ":white_check_mark: ECR publicに最新imageのpushが完了しました",
+#              color: "good",
+#              title: $titleLink,
+#              title_link: $titleLink,
+#              fields: [
+#                {
+#                  "title": "Tag",
+#                  "value": "${{ steps.build-and-push-tag.outputs.version }}",
+#                }
+#              ]
+#            }]
+#          }' | curl ${{ secrets.SLACK_WEBHOOK_URL }} -X POST -H 'Content-Type: application/json' -d @-
