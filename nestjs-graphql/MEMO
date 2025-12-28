@@ -114,3 +114,39 @@ vi src/app.module.ts
 
 npm run start:dev
 
+http://localhost:3000/graphql
+
+playground ------------------------------------
+INPUT
+query {
+  getUsers {
+    id
+    name
+    email
+  }
+}
+
+curl ------------------------------------
+
+curl -H "content-type: application/json" -X POST -d " \
+ { \
+   \"query\": \"query { getUsers { id name email }}\" \
+ } \
+" http://127.0.0.1:3000/graphql
+
+->>
+{"data":{"getUsers":[{"id":1,"name":"Messi","email":"Messi@example.com"},{"id":2,"name":"大谷","email":"Ohtai@example.com"}]}}
+
+
+curl -H 'content-type: application/json' -X POST -d '{"query": "query { getUsers { id name email }}" }' http://127.0.0.1:3000/graphql
+
+curl -X POST -H 'content-type: application/json' -d '{"query": "query { getUsers { id name email }}" }' http://127.0.0.1:3000/graphql
+
+curl -X POST -H "content-type: application/json"  -d " \
+ { \
+   \"query\": \"query { getUsers { id name email }}\" \
+ } \
+" http://127.0.0.1:3000/graphql
+
+
+
